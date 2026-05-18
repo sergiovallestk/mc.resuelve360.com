@@ -508,8 +508,16 @@
    * ──────────────────────────────────────── */
   var params  = new URLSearchParams(window.location.search);
   var pParam  = params.get('p');
-  var name    = params.get('name')  ? decodeURIComponent(params.get('name')).trim()  : '';
-  var email   = params.get('email') ? decodeURIComponent(params.get('email')).trim() : '';
+  function sanitizeParam(val) {
+    if (!val) return '';
+    var decoded = decodeURIComponent(val).trim();
+    /* Si Hotmart no reemplazó la variable, el valor contiene llaves { } — lo descartamos */
+    if (decoded.indexOf('{') !== -1 || decoded.indexOf('}') !== -1) return '';
+    return decoded;
+  }
+
+  var name  = sanitizeParam(params.get('name'));
+  var email = sanitizeParam(params.get('email'));
 
   var unlocked = new Set(pParam
     ? pParam.split(',').map(function(v){ return v.trim().toLowerCase(); })
