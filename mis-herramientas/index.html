@@ -506,7 +506,10 @@
    *  Sin parámetros (favoritos / acceso directo):
    *    Aviso genérico · mc, bc, mp desbloqueados · KN siempre con password
    * ──────────────────────────────────────── */
-  var params  = new URLSearchParams(window.location.search);
+  /* Hotmart convierte & en &amp; al guardar la URL.
+     Normalizamos la query string antes de parsearla. */
+  var rawSearch = window.location.search.replace(/&amp;/gi, '&');
+  var params  = new URLSearchParams(rawSearch);
   var pParam  = params.get('p');
   function sanitizeParam(val) {
     if (!val) return '';
