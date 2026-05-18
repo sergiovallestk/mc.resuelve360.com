@@ -522,11 +522,13 @@
   var name  = sanitizeParam(params.get('name'));
   var email = sanitizeParam(params.get('email'));
 
+  /* kn NUNCA se desbloquea automáticamente — siempre requiere contraseña.
+     Se filtra del set para todos los caminos incluyendo ?p=mc,kn
+     que se usa en el área de miembros de Kit Nocturno. */
   var unlocked = new Set(pParam
-    ? pParam.split(',').map(function(v){ return v.trim().toLowerCase(); })
+    ? pParam.split(',').map(function(v){ return v.trim().toLowerCase(); }).filter(function(v){ return v !== 'kn'; })
     : ['mc','bc','mp']
   );
-  unlocked.delete('kn');
 
   /* ── Aviso legal ─────────────────────── */
   function escapeHtml(str) {
