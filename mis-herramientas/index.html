@@ -466,9 +466,9 @@
     </div>
     <div class="storage-note">
       <span>💾</span>
-      <p>Tu acceso se almacena en este dispositivo y navegador. Si ingresas desde otro lugar o tus herramientas no aparecen correctamente, hazlo desde el link que encontrarás en tu <strong style="color:rgba(255,255,255,.38);font-weight:500">último correo de confirmación de Hotmart</strong> — ese link siempre refleja los productos más recientes que has adquirido.</p>
+      <p>Tu acceso se almacena en este dispositivo y navegador. Si ingresas desde otro lugar o tus herramientas no aparecen correctamente, hazlo desde el link que encontrarás en tu <strong style="color:rgba(255,255,255,.38);font-weight:500">último correo de confirmación de compra (Hotmart o Resuelve360)</strong> — ese link siempre refleja los productos más recientes que has adquirido.</p>
     </div>
-    <p class="footer-copy">Resuelve360 · Herramientas para el sistema nervioso</p>
+    <p class="footer-copy">Resuelve360 · <span id="brand-slogan"></span></p>
   </div>
 
 </div><!-- /.wrapper -->
@@ -482,6 +482,20 @@
      que uses en el email de Hotmart.
   ══════════════════════════════════════════ */
   var KN_PASSWORD = 'NOCTURNO';
+
+  /* ── Slogan dinámico ─────────────────────
+     Elige uno de los 3 slogans de Resuelve360
+     al azar en cada visita.
+  ─────────────────────────────────────────── */
+  var SLOGANS = [
+    'Del problema a la solución en minutos.',
+    'No aprendas. Resuelve hoy.',
+    'La solución ya está aquí.'
+  ];
+  var sloganEl = document.getElementById('brand-slogan');
+  if (sloganEl) {
+    sloganEl.textContent = SLOGANS[Math.floor(Math.random() * SLOGANS.length)];
+  }
 
   /* ── Stars ─────────────────────────────── */
   var starsEl = document.getElementById('stars');
