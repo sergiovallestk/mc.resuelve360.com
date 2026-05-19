@@ -263,6 +263,9 @@
     .footer { margin-top:52px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:20px; opacity:0; animation:fadeIn .6s ease forwards 1.2s; }
     .bookmark { display:inline-flex; align-items:center; gap:9px; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:100px; padding:10px 22px; font-size:13px; color:var(--muted); font-weight:300; }
     .footer-copy { font-size:11.5px; color:rgba(120,120,160,.45); letter-spacing:.5px; }
+    .storage-note { display:flex; align-items:flex-start; gap:9px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); border-radius:10px; padding:12px 16px; max-width:520px; text-align:left; }
+    .storage-note span { font-size:13px; flex-shrink:0; opacity:.4; margin-top:1px; }
+    .storage-note p { font-size:11px; font-weight:300; color:rgba(255,255,255,.25); line-height:1.65; letter-spacing:.1px; }
 
     @keyframes fadeUp  { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
     @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
@@ -461,6 +464,10 @@
       <span>🔖</span>
       Guarda esta página en favoritos — aquí siempre tendrás todo
     </div>
+    <div class="storage-note">
+      <span>💾</span>
+      <p>Tu acceso se almacena en este dispositivo y navegador. Si ingresas desde otro lugar, hazlo desde el link que recibiste en tu correo de confirmación de Hotmart con el asunto <strong style="color:rgba(255,255,255,.38);font-weight:500">"Mis Herramientas de Modo Calma"</strong>.</p>
+    </div>
     <p class="footer-copy">Resuelve360 · Herramientas para el sistema nervioso</p>
   </div>
 
@@ -489,73 +496,129 @@
       '--op:'+(0.2+Math.random()*0.45).toFixed(2)+';';
     starsEl.appendChild(s);
   }
+  /* ══════════════════════════════════════════
+     LOCALSTORAGE — claves utilizadas
+     r360_products : CSV de productos desbloqueados (mc,bc,mp)
+     r360_name     : nombre del comprador
+     r360_email    : email del comprador
+     r360_kn_unlocked : "true" si KN fue desbloqueado con contraseña
+  ══════════════════════════════════════════ */
 
-  /* ── URL params ─────────────────────────
-   *
-   *  Configura en Hotmart (Embudo → Página de Gracias):
-   *
-   *  Rechazó ambos upsells:
-   *    mc.resuelve360.com/mis-herramientas?p=mc&name={buyer_name}&email={buyer_email}
-   *
-   *  Aceptó Base Cero:
-   *    mc.resuelve360.com/mis-herramientas?p=mc,bc&name={buyer_name}&email={buyer_email}
-   *
-   *  Aceptó ambos upsells:
-   *    mc.resuelve360.com/mis-herramientas?p=mc,bc,mp&name={buyer_name}&email={buyer_email}
-   *
-   *  Sin parámetros (favoritos / acceso directo):
-   *    Aviso genérico · mc, bc, mp desbloqueados · KN siempre con password
-   * ──────────────────────────────────────── */
-  /* Hotmart convierte & en &amp; al guardar la URL.
-     Normalizamos la query string antes de parsearla. */
-  var rawSearch = window.location.search.replace(/&amp;/gi, '&');
-  var params  = new URLSearchParams(rawSearch);
-  var pParam  = params.get('p');
+  /* ── Helpers ─────────────────────────── */
+  function escapeHtml(str) {
+    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>\/g,"&gt;").replace(/"\/g,"&quot;");
+  }
+
   function sanitizeParam(val) {
-    if (!val) return '';
+    if (!val) return "";
     var decoded = decodeURIComponent(val).trim();
-    /* Si Hotmart no reemplazó la variable, el valor contiene llaves { } — lo descartamos */
-    if (decoded.indexOf('{') !== -1 || decoded.indexOf('}') !== -1) return '';
+    if (decoded.indexOf("{") !== -1 || decoded.indexOf("}") !== -1) return "";
     return decoded;
   }
 
-  var name  = sanitizeParam(params.get('name'));
-  var email = sanitizeParam(params.get('email'));
+  /* ── Leer URL params ─────────────────────
+   *
+   *  Hotmart convierte & en &amp; — normalizamos antes de parsear.
+   *
+   *  Páginas de Gracias del Embudo:
+   *    ?p=mc&name={buyer_name}&email={buyer_email}
+   *    ?p=mc,bc&name={buyer_name}&email={buyer_email}
+   *    ?p=mc,bc,mp&name={buyer_name}&email={buyer_email}
+   *
+   *  Área de Miembros (Hotmart):
+   *    ?p=mc          (Modo Calma)
+   *    ?p=mc,kn       (Kit Nocturno)
+   *    ?p=mc,bc       (Base Cero)
+   *    ?p=mc,mp       (Mapa del Pánico)
+   *    ?p=mc,bc,mp    (Base Cero + Mapa comprados independiente)
+   * ─────────────────────────────────────── */
+  var rawSearch = window.location.search.replace(/&amp;/gi, "&");
+  var params    = new URLSearchParams(rawSearch);
+  var pParam    = params.get("p");
+  var urlName   = sanitizeParam(params.get("name"));
+  var urlEmail  = sanitizeParam(params.get("email"));
 
-  /* kn NUNCA se desbloquea automáticamente — siempre requiere contraseña.
-     Se filtra del set para todos los caminos incluyendo ?p=mc,kn
-     que se usa en el área de miembros de Kit Nocturno. */
-  var unlocked = new Set(pParam
-    ? pParam.split(',').map(function(v){ return v.trim().toLowerCase(); }).filter(function(v){ return v !== 'kn'; })
-    : ['mc','bc','mp']
-  );
+  /* ── Leer localStorage ───────────────── */
+  var lsProducts = localStorage.getItem("r360_products") || "";
+  var lsName     = localStorage.getItem("r360_name")     || "";
+  var lsEmail    = localStorage.getItem("r360_email")    || "";
 
-  /* ── Aviso legal ─────────────────────── */
-  function escapeHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  /* ── Determinar productos desbloqueados ─
+   *
+   *  Si vienen parámetros → merge con localStorage (nunca quitar, solo sumar).
+   *  Si no vienen parámetros → usar localStorage o fallback a solo mc.
+   *  kn NUNCA entra al set automático — siempre requiere contraseña.
+   * ─────────────────────────────────────── */
+  var productSet = new Set();
+
+  /* Cargar los que ya había en localStorage */
+  if (lsProducts) {
+    lsProducts.split(",").forEach(function(v) {
+      var code = v.trim().toLowerCase();
+      if (code && code !== "kn") productSet.add(code);
+    });
   }
 
-  var noticeBody = document.getElementById('notice-body');
+  if (pParam) {
+    /* Agregar los nuevos que vienen en la URL (merge) */
+    pParam.split(",").forEach(function(v) {
+      var code = v.trim().toLowerCase();
+      if (code && code !== "kn") productSet.add(code);
+    });
+  } else if (productSet.size === 0) {
+    /* Sin params y sin localStorage → solo mc seguro */
+    productSet.add("mc");
+  }
+
+  var unlocked = productSet;
+
+  /* ── Determinar nombre y email ──────────
+   *
+   *  Prioridad: URL params > localStorage.
+   *  Si la URL trae datos válidos, actualizan localStorage.
+   * ─────────────────────────────────────── */
+  var name  = urlName  || lsName;
+  var email = urlEmail || lsEmail;
+
+  /* ── Guardar/actualizar localStorage ─── */
+  if (pParam || urlName || urlEmail) {
+    localStorage.setItem("r360_products", Array.from(productSet).join(","));
+    if (urlName)  localStorage.setItem("r360_name",  urlName);
+    if (urlEmail) localStorage.setItem("r360_email", urlEmail);
+  }
+
+  /* ── ¿Primera vez sin datos? (flag para texto alternativo) */
+  var noStoredData = !lsProducts && !pParam;
+
+  /* ── Aviso legal ─────────────────────── */
+  var noticeBody = document.getElementById("notice-body");
   if (name && email) {
     noticeBody.innerHTML =
-      'Este producto ha sido adquirido con el correo electrónico ' +
-      '<strong>' + escapeHtml(email) + '</strong>' +
-      ' para el uso exclusivo de ' +
-      '<strong>' + escapeHtml(name) + '</strong>' +
-      '. El acceso no autorizado o la redistribución de este material constituyen una violación de los términos de compra; en caso de incurrir en alguno de estos escenarios se aplicarán las medidas legales correspondientes.';
+      "Este producto ha sido adquirido con el correo electrónico " +
+      "<strong>" + escapeHtml(email) + "</strong>" +
+      " para el uso exclusivo de " +
+      "<strong>" + escapeHtml(name) + "</strong>" +
+      ". El acceso no autorizado o la redistribución de este material constituyen una violación de los términos de compra; en caso de incurrir en alguno de estos escenarios se aplicarán las medidas legales correspondientes.";
   } else {
     noticeBody.innerHTML =
-      'Este producto es para el uso exclusivo de quien lo adquirió. ' +
-      'El acceso no autorizado o la redistribución de este material constituyen una violación de los términos de compra; ' +
-      'en caso de incurrir en alguno de estos escenarios se aplicarán las medidas legales correspondientes.';
+      "Este producto es para el uso exclusivo de quien lo adquirió. " +
+      "El acceso no autorizado o la redistribución de este material constituyen una violación de los términos de compra; " +
+      "en caso de incurrir en alguno de estos escenarios se aplicarán las medidas legales correspondientes.";
   }
 
   /* ── KN localStorage ──────────────────── */
-  var knPreviouslyUnlocked = localStorage.getItem('r360_kn_unlocked') === 'true';
+  var knPreviouslyUnlocked = localStorage.getItem("r360_kn_unlocked") === "true";
 
   var SVG_ARROW =
-    '<svg width="14" height="14" viewBox="0 0 14 14" fill="none">' +
-    '<path d="M1 7H13M7 1L13 7L7 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    "<svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\">" +
+    "<path d=\"M1 7H13M7 1L13 7L7 13\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>";
+
+  /* Texto alternativo para productos bloqueados sin localStorage */
+  var ALT_LOCKED_TEXT =
+    "¿YA LO ADQUIRISTE PREVIAMENTE? REVISA TU CORREO ELECTRÓNICO CON EL ASUNTO " +
+    "\"MIS HERRAMIENTAS DE MODO CALMA\" PARA ACTUALIZAR TU ACCESO A ESTE PORTAL";
+
+
 
   /* ── Ocultar cards antes de procesar ──── */
   var allCards = document.querySelectorAll('.card');
@@ -576,7 +639,7 @@
 
     var tag = document.createElement('p');
     tag.className = 'not-included';
-    tag.textContent = 'No incluido en tu compra';
+    tag.textContent = noStoredData ? ALT_LOCKED_TEXT : 'No incluido en tu compra';
     var btn = card.querySelector('.card-btn');
     if (btn) {
       card.insertBefore(tag, btn);
