@@ -526,18 +526,21 @@
   function sanitizeParam(val) {
     if (!val) return "";
     var decoded = decodeURIComponent(val).trim();
+    // Rechazar si Hotmart no sustituyó el placeholder (llaves o corchetes sin reemplazar)
     if (decoded.indexOf("{") !== -1 || decoded.indexOf("}") !== -1) return "";
+    if (decoded.indexOf("[") !== -1 || decoded.indexOf("]") !== -1) return "";
     return decoded;
   }
 
   /* ── Leer URL params ─────────────────────
    *
    *  Hotmart convierte & en &amp; — normalizamos antes de parsear.
+   *  Hotmart usa corchetes [] como placeholders dinámicos (NO llaves {}).
    *
    *  Páginas de Gracias del Embudo:
-   *    ?p=mc&name={buyer_name}&email={buyer_email}
-   *    ?p=mc,bc&name={buyer_name}&email={buyer_email}
-   *    ?p=mc,bc,mp&name={buyer_name}&email={buyer_email}
+   *    ?p=mc&name=[name]&email=[email]
+   *    ?p=mc,bc&name=[name]&email=[email]
+   *    ?p=mc,bc,mp&name=[name]&email=[email]
    *
    *  Área de Miembros (Hotmart):
    *    ?p=mc          (Modo Calma)
