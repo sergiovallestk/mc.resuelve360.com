@@ -534,13 +534,18 @@
 
   /* ── Leer URL params ─────────────────────
    *
-   *  Hotmart convierte & en &amp; — normalizamos antes de parsear.
-   *  Hotmart usa corchetes [] como placeholders dinámicos (NO llaves {}).
+   *  NOTA: Hotmart NO reemplaza placeholders dinámicos ([name], {buyer_name},
+   *  etc.) en URLs de páginas externas. Solo lo hace en sus propias páginas
+   *  internas (Sparkle). Para páginas externas como GitHub Pages, Hotmart
+   *  simplemente redirige y agrega su propio parámetro &fsid= de tracking.
+   *  Por eso name y email NO se configuran en las URLs del embudo.
+   *
+   *  Hotmart también convierte & en &amp; — se normaliza antes de parsear.
    *
    *  Páginas de Gracias del Embudo:
-   *    ?p=mc&name=[name]&email=[email]
-   *    ?p=mc,bc&name=[name]&email=[email]
-   *    ?p=mc,bc,mp&name=[name]&email=[email]
+   *    ?p=mc          (rechazó upsells)
+   *    ?p=mc,bc       (aceptó Base Cero)
+   *    ?p=mc,bc,mp    (aceptó Base Cero + Mapa del Pánico)
    *
    *  Área de Miembros (Hotmart):
    *    ?p=mc          (Modo Calma)
@@ -604,8 +609,13 @@
     if (urlEmail) localStorage.setItem("r360_email", urlEmail);
   }
 
-  /* ── ¿Primera vez sin datos? (flag para texto alternativo) */
-  var noStoredData = !lsProducts && !pParam;
+  /* ── ¿Sin parámetros explícitos en la URL actual?
+   *  Si el usuario llega directo (sin ?p=), mostramos el texto alternativo
+   *  en las cards bloqueadas aunque haya datos en localStorage, porque
+   *  puede estar accediendo desde otro dispositivo o con LS desactualizado.
+   *  Solo mostramos "No incluido en tu compra" cuando Hotmart envió
+   *  explícitamente los productos que tiene (?p=mc, ?p=mc,bc, etc.). */
+  var noStoredData = !pParam;
 
   /* ── Aviso legal ─────────────────────── */
   var noticeBody = document.getElementById("notice-body");
