@@ -609,13 +609,10 @@
     if (urlEmail) localStorage.setItem("r360_email", urlEmail);
   }
 
-  /* ── ¿Sin parámetros explícitos en la URL actual?
-   *  Si el usuario llega directo (sin ?p=), mostramos el texto alternativo
-   *  en las cards bloqueadas aunque haya datos en localStorage, porque
-   *  puede estar accediendo desde otro dispositivo o con LS desactualizado.
-   *  Solo mostramos "No incluido en tu compra" cuando Hotmart envió
-   *  explícitamente los productos que tiene (?p=mc, ?p=mc,bc, etc.). */
-  var noStoredData = !pParam;
+  /* ── Texto de cards bloqueadas: siempre el mensaje alternativo.
+   *  Se evita "No incluido en tu compra" para no generar ambigüedad
+   *  en usuarios que sí compraron pero acceden desde otro dispositivo
+   *  o con localStorage vacío. */
 
   /* ── Aviso legal ─────────────────────── */
   var noticeBody = document.getElementById("notice-body");
@@ -666,7 +663,7 @@
 
     var tag = document.createElement('p');
     tag.className = 'not-included';
-    tag.textContent = noStoredData ? ALT_LOCKED_TEXT : 'No incluido en tu compra';
+    tag.textContent = ALT_LOCKED_TEXT;
     var btn = card.querySelector('.card-btn');
     if (btn) {
       card.insertBefore(tag, btn);
